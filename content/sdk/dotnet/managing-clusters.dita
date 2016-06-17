@@ -2,7 +2,179 @@
 <!DOCTYPE topic PUBLIC "-//OASIS//DTD DITA Topic//EN" "topic.dtd">
 <topic id="topic_rjv_p1n_bw">
   <title>Managing Clusters</title>
+  <shortdesc>You can use the ClusterManager to manage your cluster using the .NET SDK.</shortdesc>
   <body>
-    <p>TODO</p>
+    <section id="section_rhh_wn2_3w">
+      <title>The ClusterManager</title>
+      <p>The ClusterManager is the core object for managing your cluster from the SDK. The
+        ClusterManager is contains methods for adding and removing nodes, rebalancing the cluster,
+        adding and removing buckets and performing rebalances.<codeblock><![CDATA[var cluster = new Cluster(configuration);
+var clusterManager = cluster.CreateManager("Administrator", "password");]]></codeblock></p>
+      <p>The ClusterManager is created by calling the ICluster.CreateManager factory method and
+        passing in the administrator credentials. In this case we are using the default
+        "Administrator" account; in a deployment scenario you will want to use a different username
+        and password.</p>
+    </section>
+    <section id="section_dnl_rr2_3w">
+      <title>Adding and Removing nodes</title>
+      <p>The <apiname>IClusterManager.AddNode</apiname> and
+          <apiname>IClusterManager.AddNodeAsync</apiname> methods are used to add a node to an
+        existing cluster or build a cluster from the start.<codeblock><![CDATA[var clusterManager = cluster.CreateManager("Administrator", "password");
+var result = clusterManager.AddNode(SecondaryIp);]]>
+if(result.Success){
+  //do something
+}</codeblock></p>
+    </section>
+    <p>The <apiname>AddNode</apiname> and <apiname>AddNodeAsync</apiname> methods take a single
+      parameter, <parmname>ipAddress</parmname> which is the IP of the node you are going to add to
+      your cluster. The API expects that the node has already been provisioned with Couchbase Server
+      installed. </p>
+    <p>To remove a node, you 'll use the <apiname>RemoveNode</apiname> or the
+        <apiname>IClusterManager.RemoveNodeAsync</apiname>, which the asynchronous version or
+      non-blocking version. <codeblock><![CDATA[var clusterManager = cluster.CreateManager("Administrator", "password");
+var result = await clusterManager.RemoveNodeAsync(SecondaryIp);]]>
+if(result.Success){
+  //do something
+}</codeblock></p>
+    <p>Like the methods for adding a node, <apiname>RemoveNode</apiname> and
+        <apiname>RemoveNodeAsync</apiname> take a single parameter, <parmname>ipAddress</parmname>,
+      which the IP of the node to remove. If the removal was successful, the
+        <apiname>IResult.Success</apiname> property will return true; if it fails you can use the
+        <apiname>IResult.Exception</apiname> field to determine the reason for the failure.</p>
+    <section id="section_bv1_nx2_3w">
+      <title>Provisioning an entry point node</title>
+      <p>You can use the <apiname>ClusterManager</apiname> to configure the cluster once you have
+        added nodes to it. The <apiname>ConfigureAdmin</apiname> and
+          <apiname>ConfigureAdminAsync</apiname> methods to provision an entry-point (EP) node. <codeblock><![CDATA[ var clusterManager = cluster.CreateManager("Administrator", "password");
+ var result = await clusterManager.ConfigureAdminAsync("192.168.77.101");]]></codeblock></p>
+      <p>Like <apiname>AddNode</apiname> and <apiname>RemoveNode</apiname>,
+          <apiname>ConfiguraAdminAsync</apiname> takes a single parameter
+          <parmname>ipAddress</parmname>, which is the IP of the address of the node that will be
+        the entry-point node.</p>
+      <p>Once you have provisioned an entry-point node, you'll want to provision the memory for that node:<codeblock><![CDATA[var clusterManager = cluster.CreateManager("Administrator", "password");
+var result = await clusterManager.ConfigureMemoryAsync("192.168.77.101", 256, 500);]]></codeblock></p>
+      <p>The <apiname>ConfigureMemoryAsync</apiname> method takes the following parameters:<ul
+          id="ul_hq4_m1f_3w">
+          <li><parmname>ipAddress</parmname>: the IP of the entry-point node.</li>
+          <li><parmname>dataMemQuota</parmname>: the max memory to allocate for the data
+            service.</li>
+          <li><parmname>indexMemQuota</parmname>: the max memory to allocate for the indexing
+            service.</li>
+        </ul></p>
+    </section>
+    <section id="section_trs_rz2_3w">
+      <title>Configuring the services that will run on a node</title>
+      <p>You can configure which services you'll want to run on a node by using the
+          <apiname>SetUpServices</apiname> method. </p>
+      <p>
+        <codeblock><![CDATA[ var clusterManager = cluster.CreateManager("Administrator", "password");
+ var result = await clusterManager.SetupServicesAsync("192.168.77.101",
+           CouchbaseService.Index, CouchbaseService.KV, CouchbaseService.N1QL);]]></codeblock>
+      </p>
+      <p>This method takes the <parmname>ipAddress</parmname> of the node to configure and
+          <parmname>services</parmname>, which is a list of <apiname>CouchbaseServices</apiname> to
+        configure on the node.</p>
+    </section>
+    <section id="section_bgj_rbf_3w">
+      <title>Creating a bucket</title>
+      <p>Once you have provisioned and configured your cluster, you can create Couchbase and
+        Memcached buckets for storing your data using the <apiname>CreateBucket</apiname> method.
+        This method takes a large number of parameters, but only the <parmname>name</parmname>
+        parameter is required. Here is a table showing all of the parameters and their
+          defaults:<table frame="all" rowsep="1" colsep="1" id="table_pm2_gcf_3w">
+          <title/>
+          <tgroup cols="3">
+            <colspec colname="c1" colnum="1" colwidth="2.5*"/>
+            <colspec colname="c2" colnum="2" colwidth="4.13*"/>
+            <colspec colname="c3" colnum="3" colwidth="1*"/>
+            <thead>
+              <row>
+                <entry>Name</entry>
+                <entry>Description</entry>
+                <entry>Default</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry><parmname>ramQuota</parmname></entry>
+                <entry>The RAM quota in megabytes</entry>
+                <entry>100</entry>
+              </row>
+              <row>
+                <entry><parmname>bucketType</parmname></entry>
+                <entry>Type of bucket to be created</entry>
+                <entry>Couchbase</entry>
+              </row>
+              <row>
+                <entry><parmname>replicaNumber</parmname></entry>
+                <entry>The number of replicas of each document: minimum 0, maximum 3.</entry>
+                <entry>ReplicaNumber.Two</entry>
+              </row>
+              <row>
+                <entry><parmname>authType</parmname></entry>
+                <entry>The authentication type.</entry>
+                <entry>SASL</entry>
+              </row>
+              <row>
+                <entry><parmname>indexReplicas</parmname></entry>
+                <entry>Disable or enable indexes for bucket replicas.</entry>
+                <entry>false</entry>
+              </row>
+              <row>
+                <entry><parmname>flushEnabled</parmname></entry>
+                <entry>Enables the flush functionality on the specified bucket.</entry>
+                <entry>false</entry>
+              </row>
+              <row>
+                <entry><parmname>parallelDbAndViewCompaction</parmname></entry>
+                <entry>Indicates whether database and view files on disk can be compacted
+                  simultaneously.</entry>
+                <entry>false</entry>
+              </row>
+              <row>
+                <entry><parmname>saslPassword</parmname></entry>
+                <entry>Optional Parameter. String. Password for SASL authentication. Required if
+                  SASL authentication has been enabled.</entry>
+                <entry>""</entry>
+              </row>
+              <row>
+                <entry><parmname>threadNumber</parmname></entry>
+                <entry>Optional Parameter. Integer from 2 to 8. Change the number of concurrent
+                  readers and writers for the data bucket.</entry>
+                <entry>ThreadNumber.Two</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </table></p>
+      <p>The simplest example of using the <apiname>CreateBucket</apiname> method is by simply
+        passing in a bucket name and using all of the default parameters:<codeblock><![CDATA[var clusterManager = cluster.CreateManager("Administrator", "password");
+var result = clusterManager.CreateBucket("test1");]]></codeblock></p>
+    </section>
+    <p>Note that, like the other methods of <apiname>ClusterManager</apiname>, there are async
+      versions of all methods including <apiname>CreateBucket</apiname>:
+        <apiname>CreateBucketAsync</apiname>.</p>
+    <section id="section_qwk_b2f_3w">
+      <title>Other useful methods</title>
+      <p>After you have a removed or added a node from a cluster, the data will not be balanced, to
+        balance the data you will use the <apiname>Rebalance</apiname> or
+          <apiname>RebalanceAsync</apiname> methods to force a rebalance.<codeblock><![CDATA[var clusterManager = cluster.CreateManager("Administrator", "password");
+var result = clusterManager.Rebalance();]]></codeblock></p>
+    </section>
+    <p>Note that a rebalance may take some time, so while the method will return, the cluster will
+      continue the rebalance process in the background.</p>
+    <p>There are two methods available that help give insight into the cluster:
+        <apiname>ListBuckets</apiname> and <apiname>ClusterInfo</apiname>, along with their async
+      counterparts. <apiname>ListBuckets</apiname> will return a list of
+        <apiname>BucketConfig</apiname> objects for each bucket that exists on the cluster you are
+      connected to.</p>
+    <p>
+      <codeblock><![CDATA[var clusterManager = cluster.CreateManager("authenticated", "secret");
+ var results = clusterManager.ListBuckets();]]></codeblock>
+    </p>
+    <p>Each <apiname>BucketConfig</apiname> object contains detailed information for each bucket.
+      You can enumerate the results and print out the name and type of the bucket, as well as its
+      configuration information.</p>
+    <p>The <apiname>ClusterInfo</apiname>  is similar to <apiname>ListBuckets</apiname> and returns
+      the <apiname>BucketConfig</apiname> list and additional information from the server.</p>
   </body>
 </topic>
